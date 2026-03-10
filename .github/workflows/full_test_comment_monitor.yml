@@ -1,0 +1,40 @@
+name: Monitor PR comments for full tests trigger
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: read
+  pull-requests: read
+  contents: read
+  actions: write  # Needed to dispatch workflows
+
+jobs:
+  dispatch-tests:
+    if: github.event.issue.pull_request != null && startsWith(github.event.comment.body, '/full-tests')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger Full Test Run
+        # See https://github.com/actions/github-script
+        uses: actions/github-script@v8
+        with:
+          script: |
+            // Get the branch reference from the PR object
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+            const branch = pr.data.head.ref;
+            console.log(`Dispatching test.yml on branch ${branch}`);
+            // https://octokit.github.io/rest.js/v22/#actions-create-workflow-dispatch
+            // NB. run tests on release branch, not on main (production) branch
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: "test.yml",
+              ref: branch,
+              inputs: {test_scope: "full"}
+            });

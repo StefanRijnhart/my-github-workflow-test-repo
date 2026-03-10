@@ -1,0 +1,74 @@
+name: tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_scope:
+        description: 'Test Scope'
+        required: true
+        default: 'affected_modules'
+        type: choice
+        options:
+          - affected_modules
+          - full
+  pull_request:
+
+permissions:
+  statuses: write
+
+jobs:
+  tests:
+    runs-on: ubuntu-22.04
+    name: Some Tests
+    steps:
+      - name: Set pending status
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: '${{ github.sha }}',
+              state: 'pending',
+              context: 'Full Tests',
+              description: 'Full test run in progress',
+              target_url: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+            });
+
+      - name: Run tests
+        run: |
+          # NB. no inputs are defined in case of a pull_request trigger, so
+          # the printed value below will be ''
+          echo "Test scope is '${{ inputs.test_scope }}'"
+
+      - name: Set success status when dispatched
+        if: github.event_name == 'workflow_dispatch' && success()
+        uses: actions/github-script@v8
+        with:
+          script: |
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: '${{ github.sha }}',
+              state: 'success',
+              context: 'Full Tests',
+              description: 'Full test run passed',
+              target_url: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+            });
+
+      - name: Set failure status when dispatched
+        if: github.event_name == 'workflow_dispatch' && failure()
+        uses: actions/github-script@v8
+        with:
+          script: |
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: '${{ github.sha }}',
+              state: 'failure',
+              context: 'Full Tests',
+              description: 'Full test run failed',
+              target_url: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+            });
+

@@ -1,0 +1,33 @@
+name: Periodic full tests trigger
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '15 16 * * *'  # Run every morning at quarter to 5
+
+permissions:
+  issues: read
+  pull-requests: read
+  contents: read
+  actions: write  # Needed to dispatch workflows
+
+jobs:
+  dispatch-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger Full Test Run
+        # See https://github.com/actions/github-script
+        uses: actions/github-script@v8
+        with:
+          script: |
+            console.log("Dispatching test.yml on 18.0-release branch");
+            // https://octokit.github.io/rest.js/v22/#actions-create-workflow-dispatch
+            // NB. run tests on release branch, not on main (production) branch
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: "test.yml",
+              ref: "main",
+              inputs: {test_scope: "full"}
+            });
