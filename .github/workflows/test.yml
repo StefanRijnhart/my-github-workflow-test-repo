@@ -11,7 +11,15 @@ on:
         options:
           - affected_modules
           - full
+      pr_number:
+        description: 'PR number (optional, to identify concurrency)'
+        required: false
+        type: string
   pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || inputs.pr_number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   statuses: write
@@ -21,6 +29,11 @@ jobs:
     runs-on: ubuntu-22.04
     name: Some Tests
     steps:
+      - name: DEBUG
+        run: |
+          echo ${{ github.workflow }}-${{ github.event.pull_request.number || inputs.pr_number || github.ref }}
+          echo ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+          echo ${{ github.workflow }}-${{ github.event.pull_request.number }}-${{ github.ref }}
       - name: Set pending status
         if: github.event_name == 'workflow_dispatch'
         uses: actions/github-script@v8
@@ -41,6 +54,7 @@ jobs:
           # NB. no inputs are defined in case of a pull_request trigger, so
           # the printed value below will be ''
           echo "Test scope is '${{ inputs.test_scope }}'"
+          sleep 120
 
       - name: Set success status when dispatched
         if: github.event_name == 'workflow_dispatch' && success()

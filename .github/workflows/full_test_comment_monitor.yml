@@ -28,7 +28,8 @@ jobs:
               pull_number: context.issue.number
             });
             const branch = pr.data.head.ref;
-            console.log(`Dispatching test.yml on branch ${branch}`);
+            const prNumber = String(context.issue.number);
+            console.log(`Dispatching test.yml on branch ${branch} for PR #${prNumber}`);
             // https://octokit.github.io/rest.js/v22/#actions-create-workflow-dispatch
             // NB. run tests on release branch, not on main (production) branch
             await github.rest.actions.createWorkflowDispatch({
@@ -36,5 +37,5 @@ jobs:
               repo: context.repo.repo,
               workflow_id: "test.yml",
               ref: branch,
-              inputs: {test_scope: "full"}
+              inputs: {test_scope: "full", pr_number: prNumber}
             });
