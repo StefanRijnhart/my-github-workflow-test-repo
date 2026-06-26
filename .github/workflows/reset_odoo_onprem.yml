@@ -1,0 +1,45 @@
+# When 13.0 is pushed, overwrite the 18.0-onprem branch with 13.0.
+#
+# This is a force update: 18.0-onprem is reset to exactly match 13.0, so any
+# commits that only exist on 18.0-onprem are discarded.
+
+name: Reset 18.0-onprem to 13.0
+
+on:
+  push:
+    branches:
+      - 13.0
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  reset:
+    runs-on: ubuntu-latest
+    env:
+      TARGET_BRANCH: 18.0-onprem
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          submodules: ''
+          fetch-depth: 0
+
+      - name: List commits that will be discarded from the target branch
+        run: |
+          set -xeuo pipefail
+          # fetch-depth: 0 only fetches the pushed branch, so fetch the target too.
+          if git fetch --no-recurse-submodules origin "${TARGET_BRANCH}"; then
+            git log --oneline --no-merges "${GITHUB_SHA}..FETCH_HEAD"
+          else
+            echo "Branch ${TARGET_BRANCH} does not exist yet; nothing to discard."
+          fi
+
+      - name: Overwrite the target branch with 13.0
+        run: |
+          set -xeuo pipefail
+          git push origin "${GITHUB_SHA}:refs/heads/${TARGET_BRANCH}" --force
